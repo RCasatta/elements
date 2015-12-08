@@ -1,4 +1,5 @@
 #include <stdlib.h>
+/* #include <android/log.h> */
 #include <string.h>
 #include "org_bitcoin_NativeSecp256k1.h"
 #include "include/secp256k1.h"
@@ -87,15 +88,15 @@ JNIEXPORT jobjectArray JNICALL Java_org_bitcoin_NativeSecp256k1_secp256k1_1ecdsa
   jbyteArray sigArray, intsByteArray;
   unsigned char intsarray[2];
 
-  secp256k1_ecdsa_signature_t sig[72];
+  secp256k1_ecdsa_signature_t sig;
 
-  int ret = secp256k1_ecdsa_sign(ctx, sig, data, secKey, NULL, NULL );
+  int ret = secp256k1_ecdsa_sign(ctx, data, &sig, secKey, NULL, NULL );
 
   unsigned char outputSer[72];
   size_t outputLen = 72;
 
   if( ret ) {
-    int ret2 = secp256k1_ecdsa_signature_serialize_der(ctx,outputSer, &outputLen, sig ); (void)ret2;
+    int ret2 = secp256k1_ecdsa_signature_serialize_der(ctx,outputSer, &outputLen, &sig ); (void)ret2;
   }
 
   intsarray[0] = outputLen;
@@ -107,6 +108,46 @@ JNIEXPORT jobjectArray JNICALL Java_org_bitcoin_NativeSecp256k1_secp256k1_1ecdsa
 
   sigArray = (*env)->NewByteArray(env, outputLen);
   (*env)->SetByteArrayRegion(env, sigArray, 0, outputLen, (jbyte*)outputSer);
+  (*env)->SetObjectArrayElement(env, retArray, 0, sigArray);
+
+  intsByteArray = (*env)->NewByteArray(env, 2);
+  (*env)->SetByteArrayRegion(env, intsByteArray, 0, 2, (jbyte*)intsarray);
+  (*env)->SetObjectArrayElement(env, retArray, 1, intsByteArray);
+
+  (void)classObject;
+
+  return retArray;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_org_bitcoin_NativeSecp256k1_secp256k1_1schnorr_1sign
+  (JNIEnv* env, jclass classObject, jobject byteBufferObject, jlong ctx_l)
+{
+  secp256k1_context_t *ctx = (secp256k1_context_t*)ctx_l;
+  unsigned char* data = (unsigned char*) (*env)->GetDirectBufferAddress(env, byteBufferObject);
+  unsigned char* secKey = (unsigned char*) (data + 32);
+
+  jobjectArray retArray;
+  jbyteArray sigArray, intsByteArray;
+  unsigned char intsarray[2];
+
+  unsigned char sig[64];
+
+  int ret = secp256k1_schnorr_sign(ctx, data, sig, secKey, NULL, NULL);
+
+  /*int i = 0;
+  for (; i < 64; ++i) {
+    __android_log_print(ANDROID_LOG_DEBUG, "LOG_TAG", "%.2x", sig[i]);
+  }*/
+
+  intsarray[0] = 64;
+  intsarray[1] = ret;
+
+  retArray = (*env)->NewObjectArray(env, 2,
+    (*env)->FindClass(env, "[B"),
+    (*env)->NewByteArray(env, 1));
+
+  sigArray = (*env)->NewByteArray(env, 64);
+  (*env)->SetByteArrayRegion(env, sigArray, 0, 64, (jbyte*)sig);
   (*env)->SetObjectArrayElement(env, retArray, 0, sigArray);
 
   intsByteArray = (*env)->NewByteArray(env, 2);
@@ -478,6 +519,105 @@ JNIEXPORT jobjectArray JNICALL Java_org_bitcoin_NativeSecp256k1_secp256k1_1pubke
 
   intsByteArray = (*env)->NewByteArray(env, 2);
   (*env)->SetByteArrayRegion(env, intsByteArray, 0, 2, (jbyte*)intsarray);
+  (*env)->SetObjectArrayElement(env, retArray, 1, intsByteArray);
+
+  (void)classObject;
+
+  return retArray;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_org_bitcoin_NativeSecp256k1_secp256k1_1rangeproof_1rewind
+  (JNIEnv* env, jclass classObject, jobject byteBufferObject, jlong ctx_l, jint rangeproof_len)
+{
+  secp256k1_context_t *ctx = (secp256k1_context_t*)ctx_l;
+  const unsigned char* nonce = (*env)->GetDirectBufferAddress(env, byteBufferObject);
+  const unsigned char* commitment = (const unsigned char*) (nonce + 32);
+  const unsigned char* rangeproof = (const unsigned char*) (nonce + 32 + 33);
+
+  jobjectArray retArray;
+  jbyteArray blindingFactorArray, amountArray, intsByteArray;
+  unsigned char intsarray[2];
+  unsigned char blinding_factor[32];
+  unsigned char message[4096];
+  size_t msg_size;
+  unsigned long long amount, min_value, max_value;
+  size_t outputLen = 32;
+
+  int ret = secp256k1_rangeproof_rewind(
+    ctx,
+    blinding_factor,
+    &amount,
+    message,
+    &msg_size,
+    nonce,
+    &min_value,
+    &max_value,
+    commitment,
+    rangeproof,
+    rangeproof_len
+  );
+
+  intsarray[0] = msg_size;
+  intsarray[1] = ret;
+
+  retArray = (*env)->NewObjectArray(env, 3,
+    (*env)->FindClass(env, "[B"),
+    (*env)->NewByteArray(env, 1));
+
+  blindingFactorArray = (*env)->NewByteArray(env, outputLen);
+  (*env)->SetByteArrayRegion(env, blindingFactorArray, 0, 32, (jbyte*)blinding_factor);
+  (*env)->SetObjectArrayElement(env, retArray, 0, blindingFactorArray);
+
+  amountArray = (*env)->NewByteArray(env, 8);
+  (*env)->SetByteArrayRegion(env, amountArray, 0, 8, (jbyte*)&amount);
+  (*env)->SetObjectArrayElement(env, retArray, 1, amountArray);
+
+  intsByteArray = (*env)->NewByteArray(env, 2);
+  (*env)->SetByteArrayRegion(env, intsByteArray, 0, 2, (jbyte*)intsarray);
+  (*env)->SetObjectArrayElement(env, retArray, 2, intsByteArray);
+
+  (void)classObject;
+
+  return retArray;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_org_bitcoin_NativeSecp256k1_secp256k1_1ecdh
+  (JNIEnv* env, jclass classObject, jobject byteBufferObject, jlong ctx_l)
+{
+  secp256k1_context_t *ctx = (secp256k1_context_t*)ctx_l;
+  const unsigned char* secdata = (*env)->GetDirectBufferAddress(env, byteBufferObject);
+  const unsigned char* pubdata = (const unsigned char*) (secdata + 32);
+
+  jobjectArray retArray;
+  jbyteArray outArray, intsByteArray;
+  unsigned char intsarray[1];
+  secp256k1_pubkey_t pubkey;
+  unsigned char nonce_res[32];
+  size_t outputLen = 32;
+
+  int ret = secp256k1_ec_pubkey_parse(ctx, &pubkey, pubdata, 33);
+
+  if (ret) {
+    ret = secp256k1_ecdh(
+      ctx,
+      nonce_res,
+      &pubkey,
+      secdata
+    );
+  }
+
+  intsarray[0] = ret;
+
+  retArray = (*env)->NewObjectArray(env, 2,
+    (*env)->FindClass(env, "[B"),
+    (*env)->NewByteArray(env, 1));
+
+  outArray = (*env)->NewByteArray(env, outputLen);
+  (*env)->SetByteArrayRegion(env, outArray, 0, 32, (jbyte*)nonce_res);
+  (*env)->SetObjectArrayElement(env, retArray, 0, outArray);
+
+  intsByteArray = (*env)->NewByteArray(env, 1);
+  (*env)->SetByteArrayRegion(env, intsByteArray, 0, 1, (jbyte*)intsarray);
   (*env)->SetObjectArrayElement(env, retArray, 1, intsByteArray);
 
   (void)classObject;
