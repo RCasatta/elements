@@ -98,7 +98,12 @@ AC_ARG_ENABLE(endomorphism,
     AS_HELP_STRING([--enable-endomorphism],[enable endomorphism (default is no)]),
     [use_endomorphism=$enableval],
     [use_endomorphism=no])
-    
+
+AC_ARG_ENABLE(jni,
+    AS_HELP_STRING([--enable-jni],[enable libsecp256k1_jni (default is auto)]),
+    [use_jni=$enableval],
+    [use_jni=auto])
+
 AC_ARG_ENABLE(ecmult_static_precomputation,
     AS_HELP_STRING([--enable-ecmult-static-precomputation],[enable precomputed ecmult table for signing (default is yes)]),
     [use_ecmult_static_precomputation=$enableval],
@@ -169,6 +174,22 @@ else
     AC_MSG_ERROR([invalid assembly optimization selection])
     ;;
   esac
+fi
+
+if test x"$use_jni" != x"no"; then
+  AX_JNI_INCLUDE_DIR
+  if test "x$JNI_INCLUDE_DIRS" = "x"; then
+    if test x"$use_jni" = x"yes"; then
+      AC_MSG_ERROR([jni support explicitly requested but headers were not found])
+    fi
+    AC_MSG_WARN([jni headers not found. jni support disabled])
+    use_jni=no
+  else
+    use_jni=yes
+    for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS; do
+      JNI_INCLUDES="$JNI_INCLUDES -I$JNI_INCLUDE_DIR"
+    done
+  fi
 fi
 
 if test x"$req_field" = x"auto"; then
@@ -358,6 +379,7 @@ AC_MSG_NOTICE([Using field implementation: $set_field])
 AC_MSG_NOTICE([Using bignum implementation: $set_bignum])
 AC_MSG_NOTICE([Using scalar implementation: $set_scalar])
 AC_MSG_NOTICE([Using endomorphism optimizations: $use_endomorphism])
+AC_MSG_NOTICE([Using jni: $use_jni])
 
 AC_MSG_NOTICE([Building ECDH module: $enable_module_ecdh])
 AC_MSG_NOTICE([Building Schnorr signatures module: $enable_module_schnorr])
@@ -365,12 +387,14 @@ AC_MSG_NOTICE([Building range proof module: $enable_module_rangeproof])
 
 AC_CONFIG_HEADERS([src/libsecp256k1-config.h])
 AC_CONFIG_FILES([Makefile libsecp256k1.pc])
+AC_SUBST(JNI_INCLUDES)
 AC_SUBST(SECP_INCLUDES)
 AC_SUBST(SECP_LIBS)
 AC_SUBST(SECP_TEST_LIBS)
 AC_SUBST(SECP_TEST_INCLUDES)
 AM_CONDITIONAL([USE_TESTS], [test x"$use_tests" != x"no"])
 AM_CONDITIONAL([USE_BENCHMARK], [test x"$use_benchmark" = x"yes"])
+AM_CONDITIONAL([USE_JNI], [test x"$use_jni" == x"yes"])
 AM_CONDITIONAL([USE_ECMULT_STATIC_PRECOMPUTATION], [test x"$use_ecmult_static_precomputation" = x"yes"])
 AM_CONDITIONAL([ENABLE_MODULE_ECDH], [test x"$enable_module_ecdh" = x"yes"])
 AM_CONDITIONAL([ENABLE_MODULE_SCHNORR], [test x"$enable_module_schnorr" = x"yes"])
