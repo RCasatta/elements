@@ -36,8 +36,8 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     int titleCopyrightVSpace    = 40;
 
     float fontFactor            = 1.0;
-    float devicePixelRatio      = 1.0;
-    devicePixelRatio = ((QGuiApplication*)QCoreApplication::instance())->devicePixelRatio();
+    float devicePixelRatio      = 2.0;
+    // devicePixelRatio = ((QGuiApplication*)QCoreApplication::instance())->devicePixelRatio();
 
     // define text to place
     QString titleText       = tr(PACKAGE_NAME);
