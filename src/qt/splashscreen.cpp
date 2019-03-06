@@ -71,7 +71,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     // draw the bitcoin icon, expected size of PNG: 1024x1024
     QRect rectIcon(QPoint(32,-32), QSize(pixmap.size().height()+64,pixmap.size().height()+64));
 
-    const QSize requiredSize(1024,1024);
+    const QSize requiredSize(256,256);
     QPixmap icon(networkStyle->getAppIcon().pixmap(requiredSize));
 
     pixPaint.drawPixmap(rectIcon, icon);
